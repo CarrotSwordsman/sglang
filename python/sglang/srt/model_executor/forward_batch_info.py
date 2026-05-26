@@ -498,7 +498,9 @@ class ForwardBatch(ForwardBatchDeepSeekMHAMixin):
             batch_size=len(batch.seq_lens),
             input_ids=batch.input_ids,
             req_pool_indices=batch.req_pool_indices,
-            seq_lens=batch.seq_lens,
+            # Clone persistent-relay tensors on forward_stream so forward owns
+            # its own copy, decoupled from schedule_stream's ongoing mutation.
+            seq_lens=batch.seq_lens.clone(),
             out_cache_loc=batch.out_cache_loc,
             mamba_track_indices=batch.mamba_track_indices,
             mamba_track_mask=batch.mamba_track_mask,
@@ -512,8 +514,10 @@ class ForwardBatch(ForwardBatchDeepSeekMHAMixin):
             encoder_lens_cpu=batch.encoder_lens_cpu,
             encoder_out_cache_loc=batch.encoder_out_cache_loc,
             seq_lens_sum=batch.seq_lens_sum,
-            seq_lens_cpu=seq_lens_cpu,
-            orig_seq_lens=batch.orig_seq_lens,
+            seq_lens_cpu=seq_lens_cpu.clone() if seq_lens_cpu is not None else None,
+            orig_seq_lens=(
+                batch.orig_seq_lens.clone() if batch.orig_seq_lens is not None else None
+            ),
             return_logprob=batch.return_logprob,
             top_logprobs_nums=batch.top_logprobs_nums,
             token_ids_logprobs=batch.token_ids_logprobs,
